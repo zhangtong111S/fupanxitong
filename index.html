@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>每日复盘记录</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "PingFang SC", "Microsoft Yahei", sans-serif;
+        }
+        body {
+            background-color: #f5f7fa;
+            padding: 15px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .date-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .date-section input {
+            padding: 12px 18px;
+            font-size: 18px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 250px;
+            text-align: center;
+        }
+        /* 核心：双列网格布局 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .card h2 {
+            font-size: 17px;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid currentColor;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        /* 不同模块背景色区分 */
+        .tomorrow {
+            background-color: #e8f4f8;
+            border-left: 5px solid #3498db;
+        }
+        .today-action {
+            background-color: #e8f8e8;
+            border-left: 5px solid #2ecc71;
+        }
+        .today-reflection {
+            background-color: #fff3e8;
+            border-left: 5px solid #f39c12;
+        }
+        .today-gratitude {
+            background-color: #f8e8f8;
+            border-left: 5px solid #9b59b6;
+        }
+        textarea {
+            width: 100%;
+            flex: 1;
+            min-height: 110px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 15px;
+            line-height: 1.5;
+            background-color: #fafafa;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            flex: 1;
+            min-width: 100px;
+        }
+        .save-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        .save-btn:hover {
+            background-color: #2980b9;
+        }
+        .clear-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .clear-btn:hover {
+            background-color: #c0392b;
+        }
+        .history-btn {
+            background-color: #f39c12;
+            color: white;
+        }
+        .history-btn:hover {
+            background-color: #e67e22;
+        }
+        .history-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        .history-content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .history-content h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .history-item {
+            margin-bottom: 18px;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .history-date {
+            font-weight: bold;
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        .history-section {
+            margin: 8px 0;
+        }
+        .history-section h3 {
+            font-size: 15px;
+            color: #2c3e50;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .history-section p {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #555;
+            padding-left: 20px;
+        }
+        .close-btn {
+            background-color: #95a5a6;
+            color: white;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .close-btn:hover {
+            background-color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 每日复盘</h1>
+        
+        <!-- 日期选择 -->
+        <div class="date-section">
+            <input type="date" id="dateInput">
+        </div>
+
+        <!-- 四个模块（双列布局） -->
+        <div class="grid">
+            <div class="card tomorrow">
+                <h2>📅 明日安排</h2>
+                <textarea id="tomorrowInput" placeholder="写下明天要做的事..."></textarea>
+            </div>
+            <div class="card today-action">
+                <h2>✅ 今日行动</h2>
+                <textarea id="todayActionInput" placeholder="记录今天完成的事项..."></textarea>
+            </div>
+            <div class="card today-reflection">
+                <h2>💡 今日反思/成长</h2>
+                <textarea id="todayReflectionInput" placeholder="写下今天的思考和成长..."></textarea>
+            </div>
+            <div class="card today-gratitude">
+                <h2>✨ 今日感恩/小确幸</h2>
+                <textarea id="todayGratitudeInput" placeholder="记录今天值得感恩的小事..."></textarea>
+            </div>
+        </div>
+
+        <!-- 按钮组 -->
+        <div class="btn-group">
+            <button class="save-btn" onclick="saveRecord()">💾 保存记录</button>
+            <button class="clear-btn" onclick="clearForm()">🗑️ 清空表单</button>
+            <button class="history-btn" onclick="openHistory()">📜 查看历史</button>
+        </div>
+
+        <!-- 历史记录弹窗 -->
+        <div class="history-modal" id="historyModal">
+            <div class="history-content">
+                <h2>📜 历史复盘记录</h2>
+                <div id="historyList"></div>
+                <button class="close-btn" onclick="closeHistory()">❌ 关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 默认显示今天的日期
+        document.getElementById('dateInput').valueAsDate = new Date();
+
+        // 保存记录到本地存储
+        function saveRecord() {
+            const date = document.getElementById('dateInput').value;
+            const tomorrow = document.getElementById('tomorrowInput').value;
+            const todayAction = document.getElementById('todayActionInput').value;
+            const todayReflection = document.getElementById('todayReflectionInput').value;
+            const todayGratitude = document.getElementById('todayGratitudeInput').value;
+
+            if (!date) {
+                alert('请选择日期！');
+                return;
+            }
+
+            // 构造记录对象
+            const record = {
+                date,
+                tomorrow,
+                todayAction,
+                todayReflection,
+                todayGratitude
+            };
+
+            // 从本地存储获取现有记录
+            let records = JSON.parse(localStorage.getItem('dailyReviewRecords')) || [];
+            // 检查是否已有当天记录
+            const existingIndex = records.findIndex(item => item.date === date);
+            if (existingIndex !== -1) {
+                // 更新现有记录
+                records[existingIndex] = record;
+            } else {
+                // 添加新记录
+                records.push(record);
+            }
+
+            // 保存回本地存储
+            localStorage.setItem('dailyReviewRecords', JSON.stringify(records));
+            alert('记录保存成功！');
+        }
+
+        // 清空表单
+        function clearForm() {
+            document.getElementById('tomorrowInput').value = '';
+            document.getElementById('todayActionInput').value = '';
+            document.getElementById('todayReflectionInput').value = '';
+            document.getElementById('todayGratitudeInput').value = '';
+        }
+
+        // 打开历史记录弹窗
+        function openHistory() {
+            const records = JSON.parse(localStorage.getItem('dailyReviewRecords')) || [];
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+
+            if (records.length === 0) {
+                historyList.innerHTML = '<p style="text-align: center; color: #999; padding: 20px 0;">暂无历史记录</p>';
+            } else {
+                // 按日期倒序排列
+                records.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                records.forEach(record => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    item.innerHTML = `
+                        <div class="history-date">📅 ${record.date}</div>
+                        <div class="history-section">
+                            <h3>📅 明日安排</h3>
+                            <p>${record.tomorrow || '无'}</p>
+                        </div>
+                        <div class="history-section">
+                            <h3>✅ 今日行动</h3>
+                            <p>${record.todayAction || '无'}</p>
+                        </div>
+                        <div class="history-section">
+                            <h3>💡 今日反思/成长</h3>
+                            <p>${record.todayReflection || '无'}</p>
+                        </div>
+                        <div class="history-section">
+                            <h3>✨ 今日感恩/小确幸</h3>
+                            <p>${record.todayGratitude || '无'}</p>
+                        </div>
+                    `;
+                    historyList.appendChild(item);
+                });
+            }
+
+            document.getElementById('historyModal').style.display = 'flex';
+        }
+
+        // 关闭历史记录弹窗
+        function closeHistory() {
+            document.getElementById('historyModal').style.display = 'none';
+        }
+
+        // 点击弹窗外部关闭弹窗
+        window.onclick = function(event) {
+            const modal = document.getElementById('historyModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        // 页面加载时，尝试加载当天的记录
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            const records = JSON.parse(localStorage.getItem('dailyReviewRecords')) || [];
+            const todayRecord = records.find(item => item.date === today);
+            if (todayRecord) {
+                document.getElementById('tomorrowInput').value = todayRecord.tomorrow;
+                document.getElementById('todayActionInput').value = todayRecord.todayAction;
+                document.getElementById('todayReflectionInput').value = todayRecord.todayReflection;
+                document.getElementById('todayGratitudeInput').value = todayRecord.todayGratitude;
+            }
+        }
+    </script>
+</body>
+</html>
