@@ -214,6 +214,8 @@
             align-items: center;
             padding: 0 16px;
             white-space: nowrap;
+            flex-wrap: wrap;
+            row-gap: 10px;
         }
 
         .history-select {
@@ -228,6 +230,24 @@
         }
 
         .history-select:focus {
+            outline: none;
+            border-color: #4aae9b;
+            box-shadow: 0 0 0 3px rgba(74, 174, 155, 0.1);
+        }
+
+        .search-box {
+            padding: 6px 10px;
+            border: 0.5px solid #f0f0f0;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #2d3748;
+            background-color: #ffffff;
+            white-space: nowrap;
+            flex: 1 0 150px;
+            margin: 0 10px;
+        }
+
+        .search-box:focus {
             outline: none;
             border-color: #4aae9b;
             box-shadow: 0 0 0 3px rgba(74, 174, 155, 0.1);
@@ -272,6 +292,101 @@
             transform: translateY(-1px);
         }
 
+        .btn-backup {
+            background-color: #5d9cec;
+            color: #ffffff;
+        }
+
+        .btn-backup:hover {
+            background-color: #3b82f6;
+            transform: translateY(-1px);
+        }
+
+        .btn-restore {
+            background-color: #84c529;
+            color: #ffffff;
+        }
+
+        .btn-restore:hover {
+            background-color: #65a30d;
+            transform: translateY(-1px);
+        }
+
+        .btn-search {
+            background-color: #f0932b;
+            color: #ffffff;
+        }
+
+        .btn-search:hover {
+            background-color: #f39c12;
+            transform: translateY(-1px);
+        }
+
+        /* 隐藏文件输入框 */
+        #restore-input {
+            display: none;
+        }
+
+        /* 搜索结果弹窗 */
+        .search-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .search-result {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 70%;
+            overflow-y: auto;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 0.5px solid #eee;
+            border-radius: 4px;
+        }
+
+        .result-date {
+            font-weight: 600;
+            color: #4aae9b;
+        }
+
+        .result-content {
+            margin-top: 5px;
+            color: #2d3748;
+        }
+
+        .result-note {
+            margin-top: 5px;
+            color: #9d8ed9;
+        }
+
+        .close-modal {
+            margin-top: 20px;
+            padding: 6px 15px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4aae9b;
+            color: #ffffff;
+            cursor: pointer;
+        }
+
+        .close-modal:hover {
+            background-color: #3b9181;
+        }
+
         @media (max-width: 768px) {
             .container {
                 grid-template-columns: repeat(2, 1fr) !important;
@@ -281,7 +396,7 @@
                 font-size: 16px;
             }
             .controls {
-                flex-wrap: nowrap;
+                flex-wrap: wrap;
                 gap: 4px;
                 font-size: 10px;
             }
@@ -292,6 +407,15 @@
             .history-select {
                 padding: 4px 8px;
                 font-size: 10px;
+                flex: 1 0 120px;
+            }
+            .search-box {
+                flex: 1 0 120px;
+                margin: 4px 0;
+            }
+            .btn-group {
+                flex: 1 0 180px;
+                justify-content: flex-end;
             }
         }
     </style>
@@ -365,13 +489,30 @@
 
     <div class="controls">
         <select id="history-date" class="history-select" onchange="loadHistory()"></select>
+        <input type="text" class="search-box" id="search-input" placeholder="输入关键词搜索复盘记录...">
         <div class="btn-group">
+            <button class="btn btn-search" onclick="searchRecords()">🔍 搜索</button>
             <button class="btn btn-danger" onclick="deleteHistory()">🗑️ 删除</button>
             <button class="btn btn-primary" onclick="saveData()">💾 保存</button>
+            <button class="btn btn-backup" onclick="backupData()">📤 备份</button>
+            <button class="btn btn-restore" onclick="document.getElementById('restore-input').click()">📥 恢复</button>
+            <input type="file" id="restore-input" accept=".json" onchange="restoreData(event)">
         </div>
     </div>
 
+    <!-- 搜索结果弹窗 -->
+    <div class="search-modal" id="search-modal">
+        <div class="search-result">
+            <h3 style="margin-bottom: 15px; color: #4aae9b;">搜索结果</h3>
+            <div id="result-list"></div>
+            <button class="close-modal" onclick="closeModal()">关闭</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/file-saver.js/2.0.5/FileSaver.min.js"></script>
     <script>
+        let currentDate = getToday();
+
         function getToday() {
             return new Date().toISOString().split('T')[0];
         }
@@ -398,7 +539,6 @@
             }
         }
 
-        // 优化图片上传：将图片转为Base64存储，确保刷新后依然可见
         function uploadImgToText(textareaId) {
             const input = document.createElement('input');
             input.type = 'file';
@@ -493,10 +633,124 @@
             }
         }
 
+        // 跨日检测与自动保存
+        function checkDateChange() {
+            const newDate = getToday();
+            if (newDate !== currentDate) {
+                // 1. 自动保存当日内容
+                const getContent = id => document.getElementById(id).innerHTML;
+                const oldData = {
+                    date: currentDate,
+                    work: { text: getContent('work-today') },
+                    plan: { text: getContent('plan-tomorrow') },
+                    reflection: { text: getContent('reflection-today') },
+                    blessing: { text: getContent('blessing-today') }
+                };
+                const history = JSON.parse(localStorage.getItem('review-history') || '{}');
+                history[currentDate] = oldData;
+                localStorage.setItem('review-history', JSON.stringify(history));
+
+                // 2. 更新当前日期并重置界面
+                currentDate = newDate;
+                setHeaderTitle();
+                autoSyncPlanToWork();
+                updateHistorySelect();
+                ['work-today', 'plan-tomorrow', 'reflection-today', 'blessing-today'].forEach(id => {
+                    document.getElementById(id).innerHTML = '';
+                });
+
+                // 3. 提示用户
+                alert(`已自动保存${currentDate}的复盘记录，并切换到新的一天！`);
+            }
+        }
+
+        // 数据备份功能
+        function backupData() {
+            const history = JSON.parse(localStorage.getItem('review-history') || '{}');
+            if (Object.keys(history).length === 0) {
+                alert("暂无复盘记录可备份！");
+                return;
+            }
+            const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+            saveAs(blob, `复盘记录备份_${getToday()}.json`);
+        }
+
+        // 数据恢复功能
+        function restoreData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const restoredData = JSON.parse(e.target.result);
+                    localStorage.setItem('review-history', JSON.stringify(restoredData));
+                    updateHistorySelect();
+                    alert("数据恢复成功！");
+                } catch (err) {
+                    alert("备份文件格式错误，无法恢复！");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // 搜索功能
+        function searchRecords() {
+            const keyword = document.getElementById('search-input').value.trim().toLowerCase();
+            if (!keyword) {
+                alert("请输入搜索关键词！");
+                return;
+            }
+
+            const history = JSON.parse(localStorage.getItem('review-history') || '{}');
+            const resultList = document.getElementById('result-list');
+            resultList.innerHTML = '';
+            let hasResult = false;
+
+            // 遍历所有记录，匹配关键词
+            for (const [date, record] of Object.entries(history)) {
+                const workText = record.work.text.toLowerCase();
+                const planText = record.plan.text.toLowerCase();
+                const reflectionText = record.reflection.text.toLowerCase();
+                const blessingText = record.blessing.text.toLowerCase();
+
+                if (workText.includes(keyword) || planText.includes(keyword) || reflectionText.includes(keyword) || blessingText.includes(keyword)) {
+                    hasResult = true;
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'result-item';
+                    
+                    // 提取匹配的内容片段（简化显示，过滤图片标签）
+                    const stripTags = (html) => html.replace(/<img[^>]*>/g, '[图片]');
+                    
+                    resultItem.innerHTML = `
+                        <div class="result-date">日期：${date}</div>
+                        <div class="result-content"><strong>今日工作：</strong>${stripTags(record.work.text) || '无内容'}</div>
+                        <div class="result-content"><strong>明日打算：</strong>${stripTags(record.plan.text) || '无内容'}</div>
+                        <div class="result-content"><strong>今日反思：</strong>${stripTags(record.reflection.text) || '无内容'}</div>
+                        <div class="result-content"><strong>今日小确幸：</strong>${stripTags(record.blessing.text) || '无内容'}</div>
+                    `;
+                    resultList.appendChild(resultItem);
+                }
+            }
+
+            if (!hasResult) {
+                resultList.innerHTML = '<div style="text-align: center; color: #999;">未找到匹配的记录</div>';
+            }
+
+            // 显示弹窗
+            document.getElementById('search-modal').style.display = 'flex';
+        }
+
+        // 关闭搜索弹窗
+        function closeModal() {
+            document.getElementById('search-modal').style.display = 'none';
+        }
+
         window.onload = function() {
             setHeaderTitle();
             updateHistorySelect();
             autoSyncPlanToWork();
+            // 启动日期检测定时器，每10秒检查一次
+            setInterval(checkDateChange, 10000);
         };
     </script>
 </body>
