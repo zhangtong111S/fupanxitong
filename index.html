@@ -253,6 +253,28 @@
             box-shadow: 0 0 0 3px rgba(74, 174, 155, 0.1);
         }
 
+        .time-setting {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 0 10px;
+        }
+
+        .time-input {
+            width: 60px;
+            padding: 6px 8px;
+            border: 0.5px solid #f0f0f0;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .time-input:focus {
+            outline: none;
+            border-color: #4aae9b;
+            box-shadow: 0 0 0 3px rgba(74, 174, 155, 0.1);
+        }
+
         .btn-group {
             display: flex;
             gap: 8px;
@@ -319,6 +341,26 @@
 
         .btn-search:hover {
             background-color: #f39c12;
+            transform: translateY(-1px);
+        }
+
+        .btn-notify {
+            background-color: #e17055;
+            color: #ffffff;
+        }
+
+        .btn-notify:hover {
+            background-color: #d63031;
+            transform: translateY(-1px);
+        }
+
+        .btn-export {
+            background-color: #9c27b0;
+            color: #ffffff;
+        }
+
+        .btn-export:hover {
+            background-color: #7b1fa2;
             transform: translateY(-1px);
         }
 
@@ -413,6 +455,11 @@
                 flex: 1 0 120px;
                 margin: 4px 0;
             }
+            .time-setting {
+                flex: 1 0 120px;
+                margin: 4px 0;
+                justify-content: center;
+            }
             .btn-group {
                 flex: 1 0 180px;
                 justify-content: flex-end;
@@ -490,12 +537,19 @@
     <div class="controls">
         <select id="history-date" class="history-select" onchange="loadHistory()"></select>
         <input type="text" class="search-box" id="search-input" placeholder="输入关键词搜索复盘记录...">
+        <div class="time-setting">
+            <input type="number" class="time-input" id="notify-hour" min="0" max="23" placeholder="时" value="20">
+            <span>:</span>
+            <input type="number" class="time-input" id="notify-minute" min="0" max="59" placeholder="分" value="0">
+        </div>
         <div class="btn-group">
             <button class="btn btn-search" onclick="searchRecords()">🔍 搜索</button>
             <button class="btn btn-danger" onclick="deleteHistory()">🗑️ 删除</button>
             <button class="btn btn-primary" onclick="saveData()">💾 保存</button>
             <button class="btn btn-backup" onclick="backupData()">📤 备份</button>
             <button class="btn btn-restore" onclick="document.getElementById('restore-input').click()">📥 恢复</button>
+            <button class="btn btn-notify" onclick="requestNotifyPermission()">🔔 开启复盘提醒</button>
+            <button class="btn btn-export" onclick="exportToWord()">📝 导出Word</button>
             <input type="file" id="restore-input" accept=".json" onchange="restoreData(event)">
         </div>
     </div>
@@ -510,8 +564,15 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/file-saver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.15/docxtemplater.js"></script>
+    <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
+    <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip-utils.js"></script>
     <script>
+        function loadFile(url, callback) {
+            PizZipUtils.getBinaryContent(url, callback);
+        }
         let currentDate = getToday();
+        let notifyTimer = null;
 
         function getToday() {
             return new Date().toISOString().split('T')[0];
@@ -743,6 +804,106 @@
         // 关闭搜索弹窗
         function closeModal() {
             document.getElementById('search-modal').style.display = 'none';
+        }
+
+        // 桌面提醒功能
+        function requestNotifyPermission() {
+            if (!("Notification" in window)) {
+                alert("您的浏览器不支持桌面通知，请更换现代浏览器（如Chrome、Edge）！");
+                return;
+            }
+
+            // 获取用户设置的时间
+            const hour = parseInt(document.getElementById('notify-hour').value) || 20;
+            const minute = parseInt(document.getElementById('notify-minute').value) || 0;
+
+            // 校验时间合法性
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                alert("请输入合法的时间（小时0-23，分钟0-59）！");
+                return;
+            }
+
+            if (Notification.permission === "granted") {
+                startNotifyTimer(hour, minute);
+                alert(`已开启每日${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}复盘提醒！`);
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        startNotifyTimer(hour, minute);
+                        alert(`已开启每日${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}复盘提醒！`);
+                    } else {
+                        alert("您拒绝了通知权限，无法开启复盘提醒！");
+                    }
+                });
+            } else {
+                alert("您已拒绝通知权限，请在浏览器设置中开启后重试！");
+            }
+        }
+
+        function startNotifyTimer(targetHour, targetMinute) {
+            // 清除之前的定时器
+            if (notifyTimer) clearInterval(notifyTimer);
+
+            // 每分钟检查一次时间
+            notifyTimer = setInterval(() => {
+                const now = new Date();
+                const hours = now.getHours();
+                const minutes = now.getMinutes();
+                // 检测是否为目标时间
+                if (hours === targetHour && minutes === targetMinute) {
+                    new Notification("每日复盘提醒", {
+                        body: "晚上好！记得完成今日复盘记录哦~",
+                        icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM0YWFlOWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTkgM3YxOC4wMDFjMCAxLjA5OS0uODk5IDIuMDAxLTIgMi4wMDFIN2MtMS4xIDAtMi0uOTAyLTItMi4wMDFWM0g3bTAtMkg1Yy0xLjEwNCAwLTIgLjg5Ni0yIDJ2MTQuMDAxYzAgMS4xLjg5NiAyIDIgMmgxNGMxLjEgMCAyLS45IDItMnYzLjAwMWMwIDEuMS0uOSAyLTIgMkg3bTAtMThjLjU1MiAwIDEgLjQ0OCAxIDF2MmgtMnYtMmMwLS41NTIuNDQ4LTEgMS0xaDJjLjU1MiAwIDEgLjQ0OCAxIDF2MmgtdjJjMC0uNTUyLS40NDgtMS0xLTFoLTJjLS41NTIgMC0xIC40NDgtMSAxdjJjMCAuNTUyLS40NDggMS0xIDFoLTJ2LTJjMC0uNTUyLjQ0OC0xIDEtMWgyYzAuNTUyIDAgMSAuNDQ4IDEgMXYtMmMwLS41NTItLjQ0OC0xLTEtMXoiPjwvcGF0aD48L3N2Zz4="
+                    });
+                }
+            }, 60000);
+        }
+
+        // 导出Word功能
+        function exportToWord() {
+            const history = JSON.parse(localStorage.getItem('review-history') || '{}');
+            const selectedDate = document.getElementById('history-date').value;
+            let exportData = [];
+
+            if (Object.keys(history).length === 0) {
+                alert("暂无复盘记录可导出！");
+                return;
+            }
+
+            // 筛选导出数据：选中单条或全部
+            if (selectedDate) {
+                if (history[selectedDate]) {
+                    exportData.push(history[selectedDate]);
+                }
+            } else {
+                exportData = Object.values(history).sort((a, b) => new Date(a.date) - new Date(b.date));
+            }
+
+            // 构建Word模板内容
+            let docContent = `
+                <h1 style="text-align:center;">每日复盘记录汇总</h1>
+                {{#exportData}}
+                <h2 style="color:#4aae9b;">{{date}}</h2>
+                <h3>今日工作</h3>
+                <p>{{work.text}}</p>
+                <h3>明日打算</h3>
+                <p>{{plan.text}}</p>
+                <h3>今日反思</h3>
+                <p>{{reflection.text}}</p>
+                <h3>今日小确幸</h3>
+                <p>{{blessing.text}}</p>
+                <hr>
+                {{/exportData}}
+            `;
+
+            // 创建PizZip实例
+            const zip = new PizZip();
+            zip.file('document.xml', docContent);
+            const out = zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            // 下载文件
+            const fileName = selectedDate ? `复盘记录_${selectedDate}.docx` : `复盘记录汇总_${getToday()}.docx`;
+            saveAs(out, fileName);
+            alert("Word文档导出成功！");
         }
 
         window.onload = function() {
