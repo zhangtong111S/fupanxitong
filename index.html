@@ -314,26 +314,6 @@
             transform: translateY(-1px);
         }
 
-        .btn-backup {
-            background-color: #5d9cec;
-            color: #ffffff;
-        }
-
-        .btn-backup:hover {
-            background-color: #3b82f6;
-            transform: translateY(-1px);
-        }
-
-        .btn-restore {
-            background-color: #84c529;
-            color: #ffffff;
-        }
-
-        .btn-restore:hover {
-            background-color: #65a30d;
-            transform: translateY(-1px);
-        }
-
         .btn-search {
             background-color: #f0932b;
             color: #ffffff;
@@ -352,21 +332,6 @@
         .btn-notify:hover {
             background-color: #d63031;
             transform: translateY(-1px);
-        }
-
-        .btn-export {
-            background-color: #9c27b0;
-            color: #ffffff;
-        }
-
-        .btn-export:hover {
-            background-color: #7b1fa2;
-            transform: translateY(-1px);
-        }
-
-        /* 隐藏文件输入框 */
-        #restore-input {
-            display: none;
         }
 
         /* 搜索结果弹窗 */
@@ -546,11 +511,7 @@
             <button class="btn btn-search" onclick="searchRecords()">🔍 搜索</button>
             <button class="btn btn-danger" onclick="deleteHistory()">🗑️ 删除</button>
             <button class="btn btn-primary" onclick="saveData()">💾 保存</button>
-            <button class="btn btn-backup" onclick="backupData()">📤 备份</button>
-            <button class="btn btn-restore" onclick="document.getElementById('restore-input').click()">📥 恢复</button>
             <button class="btn btn-notify" onclick="requestNotifyPermission()">🔔 开启复盘提醒</button>
-            <button class="btn btn-export" onclick="exportToWord()">📝 导出Word</button>
-            <input type="file" id="restore-input" accept=".json" onchange="restoreData(event)">
         </div>
     </div>
 
@@ -564,13 +525,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/file-saver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.15/docxtemplater.js"></script>
-    <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.js"></script>
-    <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip-utils.js"></script>
     <script>
-        function loadFile(url, callback) {
-            PizZipUtils.getBinaryContent(url, callback);
-        }
         let currentDate = getToday();
         let notifyTimer = null;
 
@@ -725,35 +680,6 @@
             }
         }
 
-        // 数据备份功能
-        function backupData() {
-            const history = JSON.parse(localStorage.getItem('review-history') || '{}');
-            if (Object.keys(history).length === 0) {
-                alert("暂无复盘记录可备份！");
-                return;
-            }
-            const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
-            saveAs(blob, `复盘记录备份_${getToday()}.json`);
-        }
-
-        // 数据恢复功能
-        function restoreData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const restoredData = JSON.parse(e.target.result);
-                    localStorage.setItem('review-history', JSON.stringify(restoredData));
-                    updateHistorySelect();
-                    alert("数据恢复成功！");
-                } catch (err) {
-                    alert("备份文件格式错误，无法恢复！");
-                }
-            };
-            reader.readAsText(file);
-        }
-
         // 搜索功能
         function searchRecords() {
             const keyword = document.getElementById('search-input').value.trim().toLowerCase();
@@ -857,53 +783,6 @@
                     });
                 }
             }, 60000);
-        }
-
-        // 导出Word功能
-        function exportToWord() {
-            const history = JSON.parse(localStorage.getItem('review-history') || '{}');
-            const selectedDate = document.getElementById('history-date').value;
-            let exportData = [];
-
-            if (Object.keys(history).length === 0) {
-                alert("暂无复盘记录可导出！");
-                return;
-            }
-
-            // 筛选导出数据：选中单条或全部
-            if (selectedDate) {
-                if (history[selectedDate]) {
-                    exportData.push(history[selectedDate]);
-                }
-            } else {
-                exportData = Object.values(history).sort((a, b) => new Date(a.date) - new Date(b.date));
-            }
-
-            // 构建Word模板内容
-            let docContent = `
-                <h1 style="text-align:center;">每日复盘记录汇总</h1>
-                {{#exportData}}
-                <h2 style="color:#4aae9b;">{{date}}</h2>
-                <h3>今日工作</h3>
-                <p>{{work.text}}</p>
-                <h3>明日打算</h3>
-                <p>{{plan.text}}</p>
-                <h3>今日反思</h3>
-                <p>{{reflection.text}}</p>
-                <h3>今日小确幸</h3>
-                <p>{{blessing.text}}</p>
-                <hr>
-                {{/exportData}}
-            `;
-
-            // 创建PizZip实例
-            const zip = new PizZip();
-            zip.file('document.xml', docContent);
-            const out = zip.generate({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-            // 下载文件
-            const fileName = selectedDate ? `复盘记录_${selectedDate}.docx` : `复盘记录汇总_${getToday()}.docx`;
-            saveAs(out, fileName);
-            alert("Word文档导出成功！");
         }
 
         window.onload = function() {
