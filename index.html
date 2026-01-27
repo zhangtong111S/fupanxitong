@@ -275,6 +275,20 @@
             box-shadow: 0 0 0 3px rgba(74, 174, 155, 0.1);
         }
 
+        .summary-setting {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 10px;
+        }
+
+        .summary-type {
+            padding: 6px 10px;
+            border: 0.5px solid #f0f0f0;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
         .btn-group {
             display: flex;
             gap: 8px;
@@ -334,6 +348,16 @@
             transform: translateY(-1px);
         }
 
+        .btn-summary {
+            background-color: #2196f3;
+            color: #ffffff;
+        }
+
+        .btn-summary:hover {
+            background-color: #1976d2;
+            transform: translateY(-1px);
+        }
+
         /* 搜索结果弹窗 */
         .search-modal {
             position: fixed;
@@ -348,13 +372,26 @@
             z-index: 999;
         }
 
-        .search-result {
+        .summary-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .modal-content {
             background-color: #ffffff;
             border-radius: 8px;
             padding: 20px;
             width: 90%;
-            max-width: 500px;
-            max-height: 70%;
+            max-width: 600px;
+            max-height: 80%;
             overflow-y: auto;
         }
 
@@ -375,9 +412,29 @@
             color: #2d3748;
         }
 
-        .result-note {
-            margin-top: 5px;
-            color: #9d8ed9;
+        .summary-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4a5568;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .summary-section {
+            margin-bottom: 15px;
+        }
+
+        .summary-section h3 {
+            font-size: 16px;
+            color: #4aae9b;
+            margin-bottom: 8px;
+        }
+
+        .summary-section p {
+            line-height: 1.6;
+            color: #2d3748;
         }
 
         .close-modal {
@@ -421,6 +478,11 @@
                 margin: 4px 0;
             }
             .time-setting {
+                flex: 1 0 120px;
+                margin: 4px 0;
+                justify-content: center;
+            }
+            .summary-setting {
                 flex: 1 0 120px;
                 margin: 4px 0;
                 justify-content: center;
@@ -507,20 +569,36 @@
             <span>:</span>
             <input type="number" class="time-input" id="notify-minute" min="0" max="59" placeholder="分" value="0">
         </div>
+        <div class="summary-setting">
+            <select class="summary-type" id="summary-type">
+                <option value="week">按周汇总</option>
+                <option value="month">按月汇总</option>
+            </select>
+        </div>
         <div class="btn-group">
             <button class="btn btn-search" onclick="searchRecords()">🔍 搜索</button>
             <button class="btn btn-danger" onclick="deleteHistory()">🗑️ 删除</button>
             <button class="btn btn-primary" onclick="saveData()">💾 保存</button>
             <button class="btn btn-notify" onclick="requestNotifyPermission()">🔔 开启复盘提醒</button>
+            <button class="btn btn-summary" onclick="generateSummary()">📊 生成汇总</button>
         </div>
     </div>
 
     <!-- 搜索结果弹窗 -->
     <div class="search-modal" id="search-modal">
-        <div class="search-result">
+        <div class="modal-content">
             <h3 style="margin-bottom: 15px; color: #4aae9b;">搜索结果</h3>
             <div id="result-list"></div>
-            <button class="close-modal" onclick="closeModal()">关闭</button>
+            <button class="close-modal" onclick="closeModal('search-modal')">关闭</button>
+        </div>
+    </div>
+
+    <!-- 汇总结果弹窗 -->
+    <div class="summary-modal" id="summary-modal">
+        <div class="modal-content">
+            <h2 class="summary-title" id="summary-title"></h2>
+            <div id="summary-content"></div>
+            <button class="close-modal" onclick="closeModal('summary-modal')">关闭</button>
         </div>
     </div>
 
@@ -653,7 +731,6 @@
         function checkDateChange() {
             const newDate = getToday();
             if (newDate !== currentDate) {
-                // 1. 自动保存当日内容
                 const getContent = id => document.getElementById(id).innerHTML;
                 const oldData = {
                     date: currentDate,
@@ -666,7 +743,6 @@
                 history[currentDate] = oldData;
                 localStorage.setItem('review-history', JSON.stringify(history));
 
-                // 2. 更新当前日期并重置界面
                 currentDate = newDate;
                 setHeaderTitle();
                 autoSyncPlanToWork();
@@ -675,7 +751,6 @@
                     document.getElementById(id).innerHTML = '';
                 });
 
-                // 3. 提示用户
                 alert(`已自动保存${currentDate}的复盘记录，并切换到新的一天！`);
             }
         }
@@ -693,7 +768,6 @@
             resultList.innerHTML = '';
             let hasResult = false;
 
-            // 遍历所有记录，匹配关键词
             for (const [date, record] of Object.entries(history)) {
                 const workText = record.work.text.toLowerCase();
                 const planText = record.plan.text.toLowerCase();
@@ -705,7 +779,6 @@
                     const resultItem = document.createElement('div');
                     resultItem.className = 'result-item';
                     
-                    // 提取匹配的内容片段（简化显示，过滤图片标签）
                     const stripTags = (html) => html.replace(/<img[^>]*>/g, '[图片]');
                     
                     resultItem.innerHTML = `
@@ -723,13 +796,11 @@
                 resultList.innerHTML = '<div style="text-align: center; color: #999;">未找到匹配的记录</div>';
             }
 
-            // 显示弹窗
             document.getElementById('search-modal').style.display = 'flex';
         }
 
-        // 关闭搜索弹窗
-        function closeModal() {
-            document.getElementById('search-modal').style.display = 'none';
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
         }
 
         // 桌面提醒功能
@@ -739,11 +810,9 @@
                 return;
             }
 
-            // 获取用户设置的时间
             const hour = parseInt(document.getElementById('notify-hour').value) || 20;
             const minute = parseInt(document.getElementById('notify-minute').value) || 0;
 
-            // 校验时间合法性
             if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
                 alert("请输入合法的时间（小时0-23，分钟0-59）！");
                 return;
@@ -767,15 +836,12 @@
         }
 
         function startNotifyTimer(targetHour, targetMinute) {
-            // 清除之前的定时器
             if (notifyTimer) clearInterval(notifyTimer);
 
-            // 每分钟检查一次时间
             notifyTimer = setInterval(() => {
                 const now = new Date();
                 const hours = now.getHours();
                 const minutes = now.getMinutes();
-                // 检测是否为目标时间
                 if (hours === targetHour && minutes === targetMinute) {
                     new Notification("每日复盘提醒", {
                         body: "晚上好！记得完成今日复盘记录哦~",
@@ -785,11 +851,98 @@
             }, 60000);
         }
 
+        // 周/月汇总统计核心功能
+        function generateSummary() {
+            const history = JSON.parse(localStorage.getItem('review-history') || '{}');
+            if (Object.keys(history).length === 0) {
+                alert("暂无复盘记录可汇总！");
+                return;
+            }
+
+            const summaryType = document.getElementById('summary-type').value;
+            const today = new Date();
+            let filterRecords = [];
+            let summaryTitle = '';
+
+            // 筛选周期内的记录
+            if (summaryType === 'week') {
+                const weekStart = new Date(today);
+                weekStart.setDate(today.getDate() - today.getDay() + 1);
+                weekStart.setHours(0, 0, 0, 0);
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+
+                summaryTitle = `${formatDate(weekStart)} - ${formatDate(weekEnd)} 周复盘汇总`;
+
+                filterRecords = Object.values(history).filter(record => {
+                    const recordDate = new Date(record.date);
+                    return recordDate >= weekStart && recordDate <= weekEnd;
+                });
+            } else if (summaryType === 'month') {
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+                summaryTitle = `${today.getFullYear()}年${today.getMonth() + 1}月 月复盘汇总`;
+
+                filterRecords = Object.values(history).filter(record => {
+                    const recordDate = new Date(record.date);
+                    return recordDate >= monthStart && recordDate <= monthEnd;
+                });
+            }
+
+            if (filterRecords.length === 0) {
+                alert("当前周期内暂无复盘记录！");
+                return;
+            }
+
+            // 生成各板块摘要
+            const stripTags = (html) => html.replace(/<img[^>]*>/g, '[图片]').replace(/<[^>]*>/g, '');
+            const workSummary = filterRecords.map(r => stripTags(r.work.text)).filter(t => t).join('；');
+            const planSummary = filterRecords.map(r => stripTags(r.plan.text)).filter(t => t).join('；');
+            const reflectionSummary = filterRecords.map(r => stripTags(r.reflection.text)).filter(t => t).join('；');
+            const blessingSummary = filterRecords.map(r => stripTags(r.blessing.text)).filter(t => t).join('；');
+
+            // 渲染汇总内容
+            const summaryContent = document.getElementById('summary-content');
+            summaryContent.innerHTML = `
+                <div class="summary-section">
+                    <h3>本周/月工作内容</h3>
+                    <p>${workSummary || '无记录内容'}</p>
+                </div>
+                <div class="summary-section">
+                    <h3>本周/月计划安排</h3>
+                    <p>${planSummary || '无记录内容'}</p>
+                </div>
+                <div class="summary-section">
+                    <h3>本周/月反思总结</h3>
+                    <p>${reflectionSummary || '无记录内容'}</p>
+                </div>
+                <div class="summary-section">
+                    <h3>本周/月小确幸集锦</h3>
+                    <p>${blessingSummary || '无记录内容'}</p>
+                </div>
+                <div class="summary-section">
+                    <h3>统计信息</h3>
+                    <p>周期内复盘记录条数：${filterRecords.length}条</p>
+                </div>
+            `;
+
+            document.getElementById('summary-title').innerText = summaryTitle;
+            document.getElementById('summary-modal').style.display = 'flex';
+        }
+
+        // 日期格式化工具函数
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+        }
+
         window.onload = function() {
             setHeaderTitle();
             updateHistorySelect();
             autoSyncPlanToWork();
-            // 启动日期检测定时器，每10秒检查一次
             setInterval(checkDateChange, 10000);
         };
     </script>
