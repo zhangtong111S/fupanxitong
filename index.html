@@ -34,6 +34,12 @@
             color: #4a5568;
             font-weight: 600;
         }
+        .auto-save-tip{
+            font-size: 12px;
+            color: #4aae9b;
+            margin-top: 6px;
+            display: none;
+        }
 
         .container {
             max-width: 1200px;
@@ -253,28 +259,6 @@
             box-shadow: 0 0 0 3px rgba(74, 174, 155, 0.1);
         }
 
-        .time-setting {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin: 0 10px;
-        }
-
-        .time-input {
-            width: 60px;
-            padding: 6px 8px;
-            border: 0.5px solid #f0f0f0;
-            border-radius: 6px;
-            font-size: 12px;
-            text-align: center;
-        }
-
-        .time-input:focus {
-            outline: none;
-            border-color: #4aae9b;
-            box-shadow: 0 0 0 3px rgba(74, 174, 155, 0.1);
-        }
-
         .summary-setting {
             display: flex;
             align-items: center;
@@ -308,16 +292,6 @@
             white-space: nowrap;
         }
 
-        .btn-primary {
-            background-color: #4aae9b;
-            color: #ffffff;
-        }
-
-        .btn-primary:hover {
-            background-color: #3b9181;
-            transform: translateY(-1px);
-        }
-
         .btn-danger {
             background-color: #e57373;
             color: #ffffff;
@@ -338,16 +312,6 @@
             transform: translateY(-1px);
         }
 
-        .btn-notify {
-            background-color: #e17055;
-            color: #ffffff;
-        }
-
-        .btn-notify:hover {
-            background-color: #d63031;
-            transform: translateY(-1px);
-        }
-
         .btn-summary {
             background-color: #2196f3;
             color: #ffffff;
@@ -358,21 +322,28 @@
             transform: translateY(-1px);
         }
 
-        /* 搜索结果弹窗 */
-        .search-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 999;
+        .btn-export {
+            background-color: #9c27b0;
+            color: #ffffff;
         }
 
-        .summary-modal {
+        .btn-export:hover {
+            background-color: #7b1fa2;
+            transform: translateY(-1px);
+        }
+
+        .btn-import {
+            background-color: #009688;
+            color: #ffffff;
+        }
+
+        .btn-import:hover {
+            background-color: #00796b;
+            transform: translateY(-1px);
+        }
+
+        /* 弹窗通用样式 */
+        .search-modal,.summary-modal {
             position: fixed;
             top: 0;
             left: 0;
@@ -468,7 +439,7 @@
                 padding: 4px 8px;
                 font-size: 10px;
             }
-            .history-select {
+            .history-select,.summary-type {
                 padding: 4px 8px;
                 font-size: 10px;
                 flex: 1 0 120px;
@@ -476,16 +447,6 @@
             .search-box {
                 flex: 1 0 120px;
                 margin: 4px 0;
-            }
-            .time-setting {
-                flex: 1 0 120px;
-                margin: 4px 0;
-                justify-content: center;
-            }
-            .summary-setting {
-                flex: 1 0 120px;
-                margin: 4px 0;
-                justify-content: center;
             }
             .btn-group {
                 flex: 1 0 180px;
@@ -497,6 +458,7 @@
 <body>
     <div class="header">
         <h1 id="today-title"></h1>
+        <div class="auto-save-tip" id="auto-save-tip">✅ 内容已自动保存</div>
     </div>
 
     <div class="container">
@@ -564,11 +526,6 @@
     <div class="controls">
         <select id="history-date" class="history-select" onchange="loadHistory()"></select>
         <input type="text" class="search-box" id="search-input" placeholder="输入关键词搜索复盘记录...">
-        <div class="time-setting">
-            <input type="number" class="time-input" id="notify-hour" min="0" max="23" placeholder="时" value="20">
-            <span>:</span>
-            <input type="number" class="time-input" id="notify-minute" min="0" max="59" placeholder="分" value="0">
-        </div>
         <div class="summary-setting">
             <select class="summary-type" id="summary-type">
                 <option value="week">按周汇总</option>
@@ -576,24 +533,24 @@
             </select>
         </div>
         <div class="btn-group">
+            <button class="btn btn-export" onclick="exportData()">📤 导出记录</button>
+            <button class="btn btn-import" onclick="importData()">📥 导入记录</button>
             <button class="btn btn-search" onclick="searchRecords()">🔍 搜索</button>
             <button class="btn btn-danger" onclick="deleteHistory()">🗑️ 删除</button>
-            <button class="btn btn-primary" onclick="saveData()">💾 保存</button>
-            <button class="btn btn-notify" onclick="requestNotifyPermission()">🔔 开启复盘提醒</button>
             <button class="btn btn-summary" onclick="generateSummary()">📊 生成汇总</button>
         </div>
     </div>
 
-    <!-- 搜索结果弹窗 -->
+    <!-- 搜索弹窗 -->
     <div class="search-modal" id="search-modal">
         <div class="modal-content">
-            <h3 style="margin-bottom: 15px; color: #4aae9b;">搜索结果</h3>
+            <h3 style="margin-bottom:15px;color:#4aae9b;">搜索结果</h3>
             <div id="result-list"></div>
             <button class="close-modal" onclick="closeModal('search-modal')">关闭</button>
         </div>
     </div>
 
-    <!-- 汇总结果弹窗 -->
+    <!-- 汇总弹窗 -->
     <div class="summary-modal" id="summary-modal">
         <div class="modal-content">
             <h2 class="summary-title" id="summary-title"></h2>
@@ -605,8 +562,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/file-saver.js/2.0.5/FileSaver.min.js"></script>
     <script>
         let currentDate = getToday();
-        let notifyTimer = null;
+        let autoSaveTimer = null;
 
+        // 获取今日日期 格式2026-01-29
         function getToday() {
             return new Date().toISOString().split('T')[0];
         }
@@ -617,22 +575,24 @@
             return yesterday.toISOString().split('T')[0];
         }
 
+        // 设置顶部今日标题
         function setHeaderTitle() {
             const today = getToday();
             document.getElementById('today-title').innerText = `${today} 每日复盘`;
         }
 
+        // 自动同步昨日计划到今日工作
         function autoSyncPlanToWork() {
             const today = getToday();
             const yesterday = getYesterday();
             const history = JSON.parse(localStorage.getItem('review-history') || '{}');
-
             if (history[today]) return;
             if (history[yesterday] && history[yesterday].plan.text) {
                 document.getElementById('work-today').innerHTML = history[yesterday].plan.text;
             }
         }
 
+        // 传图功能
         function uploadImgToText(textareaId) {
             const input = document.createElement('input');
             input.type = 'file';
@@ -650,7 +610,6 @@
                     img.style.maxHeight = '100px';
                     img.style.verticalAlign = 'middle';
                     img.style.margin = '0 4px';
-                    
                     const selection = window.getSelection();
                     const range = selection.getRangeAt(0);
                     range.deleteContents();
@@ -664,10 +623,10 @@
             input.click();
         }
 
-        function saveData() {
+        // 自动保存核心方法
+        function saveCore() {
             const today = getToday();
             const getContent = id => document.getElementById(id).innerHTML;
-
             const data = {
                 date: today,
                 work: { text: getContent('work-today') },
@@ -675,14 +634,37 @@
                 reflection: { text: getContent('reflection-today') },
                 blessing: { text: getContent('blessing-today') }
             };
-
             const history = JSON.parse(localStorage.getItem('review-history') || '{}');
             history[today] = data;
             localStorage.setItem('review-history', JSON.stringify(history));
             updateHistorySelect();
-            alert("保存成功！");
+            showAutoSaveTip();
         }
 
+        // 自动保存提示语
+        function showAutoSaveTip(){
+            const tip = document.getElementById('auto-save-tip');
+            tip.style.display = 'block';
+            setTimeout(()=>{
+                tip.style.display = 'none';
+            },1500);
+        }
+
+        // 开启自动保存（输入停1秒自动存）
+        function initAutoSave(){
+            const editBoxes = ['work-today','plan-tomorrow','reflection-today','blessing-today'];
+            editBoxes.forEach(id=>{
+                const box = document.getElementById(id);
+                box.addEventListener('input',()=>{
+                    clearTimeout(autoSaveTimer);
+                    autoSaveTimer = setTimeout(()=>{
+                        saveCore();
+                    },1000);
+                });
+            });
+        }
+
+        // 更新历史日期下拉框
         function updateHistorySelect() {
             const history = JSON.parse(localStorage.getItem('review-history') || '{}');
             const dates = Object.keys(history).sort().reverse();
@@ -696,253 +678,176 @@
             });
         }
 
+        // 加载历史记录
         function loadHistory() {
             const date = document.getElementById('history-date').value;
             if (!date) return;
             const history = JSON.parse(localStorage.getItem('review-history') || '{}');
             const data = history[date];
             if (!data) return;
-
             document.getElementById('work-today').innerHTML = data.work.text;
             document.getElementById('plan-tomorrow').innerHTML = data.plan.text;
             document.getElementById('reflection-today').innerHTML = data.reflection.text;
             document.getElementById('blessing-today').innerHTML = data.blessing.text;
         }
 
+        // 删除历史记录
         function deleteHistory() {
             const date = document.getElementById('history-date').value;
             if (!date) {
                 alert("请先选择要删除的记录日期！");
                 return;
             }
-            if (confirm(`确定要删除 ${date} 的复盘记录吗？`)) {
+            if (confirm(`确定删除 ${date} 复盘记录？`)) {
                 const history = JSON.parse(localStorage.getItem('review-history') || '{}');
                 delete history[date];
                 localStorage.setItem('review-history', JSON.stringify(history));
                 updateHistorySelect();
-                ['work-today', 'plan-tomorrow', 'reflection-today', 'blessing-today'].forEach(id => {
-                    document.getElementById(id).innerHTML = '';
-                });
+                ['work-today','plan-tomorrow','reflection-today','blessing-today'].forEach(id => document.getElementById(id).innerHTML='');
                 alert("记录已删除！");
             }
         }
 
-        // 跨日检测与自动保存
+        // 跨日自动保存检测
         function checkDateChange() {
             const newDate = getToday();
             if (newDate !== currentDate) {
-                const getContent = id => document.getElementById(id).innerHTML;
-                const oldData = {
-                    date: currentDate,
-                    work: { text: getContent('work-today') },
-                    plan: { text: getContent('plan-tomorrow') },
-                    reflection: { text: getContent('reflection-today') },
-                    blessing: { text: getContent('blessing-today') }
-                };
-                const history = JSON.parse(localStorage.getItem('review-history') || '{}');
-                history[currentDate] = oldData;
-                localStorage.setItem('review-history', JSON.stringify(history));
-
+                saveCore(); // 跨日自动存昨日内容
                 currentDate = newDate;
                 setHeaderTitle();
                 autoSyncPlanToWork();
                 updateHistorySelect();
-                ['work-today', 'plan-tomorrow', 'reflection-today', 'blessing-today'].forEach(id => {
-                    document.getElementById(id).innerHTML = '';
-                });
-
-                alert(`已自动保存${currentDate}的复盘记录，并切换到新的一天！`);
+                ['work-today','plan-tomorrow','reflection-today','blessing-today'].forEach(id => document.getElementById(id).innerHTML='');
+                alert(`已自动保存昨日记录，切换至今日复盘！`);
             }
         }
 
         // 搜索功能
         function searchRecords() {
             const keyword = document.getElementById('search-input').value.trim().toLowerCase();
-            if (!keyword) {
-                alert("请输入搜索关键词！");
-                return;
-            }
-
+            if (!keyword) {alert("请输入搜索关键词！");return;}
             const history = JSON.parse(localStorage.getItem('review-history') || '{}');
             const resultList = document.getElementById('result-list');
             resultList.innerHTML = '';
             let hasResult = false;
-
             for (const [date, record] of Object.entries(history)) {
                 const workText = record.work.text.toLowerCase();
                 const planText = record.plan.text.toLowerCase();
                 const reflectionText = record.reflection.text.toLowerCase();
                 const blessingText = record.blessing.text.toLowerCase();
-
                 if (workText.includes(keyword) || planText.includes(keyword) || reflectionText.includes(keyword) || blessingText.includes(keyword)) {
                     hasResult = true;
+                    const stripTags = (html) => html.replace(/<img[^>]*>/g, '[图片]').replace(/<[^>]*>/g, '');
                     const resultItem = document.createElement('div');
                     resultItem.className = 'result-item';
-                    
-                    const stripTags = (html) => html.replace(/<img[^>]*>/g, '[图片]');
-                    
-                    resultItem.innerHTML = `
-                        <div class="result-date">日期：${date}</div>
-                        <div class="result-content"><strong>今日工作：</strong>${stripTags(record.work.text) || '无内容'}</div>
-                        <div class="result-content"><strong>明日打算：</strong>${stripTags(record.plan.text) || '无内容'}</div>
-                        <div class="result-content"><strong>今日反思：</strong>${stripTags(record.reflection.text) || '无内容'}</div>
-                        <div class="result-content"><strong>今日小确幸：</strong>${stripTags(record.blessing.text) || '无内容'}</div>
-                    `;
+                    resultItem.innerHTML = `<div class="result-date">日期：${date}</div><div class="result-content"><strong>工作：</strong>${stripTags(record.work.text)||'无'}</div><div class="result-content"><strong>计划：</strong>${stripTags(record.plan.text)||'无'}</div><div class="result-content"><strong>反思：</strong>${stripTags(record.reflection.text)||'无'}</div><div class="result-content"><strong>小确幸：</strong>${stripTags(record.blessing.text)||'无'}</div>`;
                     resultList.appendChild(resultItem);
                 }
             }
-
-            if (!hasResult) {
-                resultList.innerHTML = '<div style="text-align: center; color: #999;">未找到匹配的记录</div>';
-            }
-
+            if (!hasResult) {resultList.innerHTML = '<div style="text-align:center;color:#999;">无匹配记录</div>';}
             document.getElementById('search-modal').style.display = 'flex';
         }
 
+        // 关闭弹窗
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
 
-        // 桌面提醒功能
-        function requestNotifyPermission() {
-            if (!("Notification" in window)) {
-                alert("您的浏览器不支持桌面通知，请更换现代浏览器（如Chrome、Edge）！");
-                return;
-            }
-
-            const hour = parseInt(document.getElementById('notify-hour').value) || 20;
-            const minute = parseInt(document.getElementById('notify-minute').value) || 0;
-
-            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-                alert("请输入合法的时间（小时0-23，分钟0-59）！");
-                return;
-            }
-
-            if (Notification.permission === "granted") {
-                startNotifyTimer(hour, minute);
-                alert(`已开启每日${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}复盘提醒！`);
-            } else if (Notification.permission !== "denied") {
-                Notification.requestPermission().then(permission => {
-                    if (permission === "granted") {
-                        startNotifyTimer(hour, minute);
-                        alert(`已开启每日${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}复盘提醒！`);
-                    } else {
-                        alert("您拒绝了通知权限，无法开启复盘提醒！");
-                    }
-                });
-            } else {
-                alert("您已拒绝通知权限，请在浏览器设置中开启后重试！");
-            }
-        }
-
-        function startNotifyTimer(targetHour, targetMinute) {
-            if (notifyTimer) clearInterval(notifyTimer);
-
-            notifyTimer = setInterval(() => {
-                const now = new Date();
-                const hours = now.getHours();
-                const minutes = now.getMinutes();
-                if (hours === targetHour && minutes === targetMinute) {
-                    new Notification("每日复盘提醒", {
-                        body: "晚上好！记得完成今日复盘记录哦~",
-                        icon: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM0YWFlOWIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTkgM3YxOC4wMDFjMCAxLjA5OS0uODk5IDIuMDAxLTIgMi4wMDFIN2MtMS4xIDAtMi0uOTAyLTItMi4wMDFWM0g3bTAtMkg1Yy0xLjEwNCAwLTIgLjg5Ni0yIDJ2MTQuMDAxYzAgMS4xLjg5NiAyIDIgMmgxNGMxLjEgMCAyLS45IDItMnYzLjAwMWMwIDEuMS0uOSAyLTIgMkg3bTAtMThjLjU1MiAwIDEgLjQ0OCAxIDF2MmgtMnYtMmMwLS41NTIuNDQ4LTEgMS0xaDJjLjU1MiAwIDEgLjQ0OCAxIDF2MmgtdjJjMC0uNTUyLS40NDgtMS0xLTFoLTJjLS41NTIgMC0xIC40NDgtMSAxdjJjMCAuNTUyLS40NDggMS0xIDFoLTJ2LTJjMC0uNTUyLjQ0OC0xIDEtMWgyYzAuNTUyIDAgMSAuNDQ4IDEgMXYtMmMwLS41NTItLjQ0OC0xLTEtMXoiPjwvcGF0aD48L3N2Zz4="
-                    });
-                }
-            }, 60000);
-        }
-
-        // 周/月汇总统计核心功能
+        // 周/月汇总
         function generateSummary() {
             const history = JSON.parse(localStorage.getItem('review-history') || '{}');
-            if (Object.keys(history).length === 0) {
-                alert("暂无复盘记录可汇总！");
-                return;
-            }
-
+            if (Object.keys(history).length === 0) {alert("暂无记录可汇总！");return;}
             const summaryType = document.getElementById('summary-type').value;
             const today = new Date();
             let filterRecords = [];
             let summaryTitle = '';
-
-            // 筛选周期内的记录
             if (summaryType === 'week') {
                 const weekStart = new Date(today);
                 weekStart.setDate(today.getDate() - today.getDay() + 1);
-                weekStart.setHours(0, 0, 0, 0);
+                weekStart.setHours(0,0,0,0);
                 const weekEnd = new Date(weekStart);
                 weekEnd.setDate(weekStart.getDate() + 6);
-
-                summaryTitle = `${formatDate(weekStart)} - ${formatDate(weekEnd)} 周复盘汇总`;
-
-                filterRecords = Object.values(history).filter(record => {
-                    const recordDate = new Date(record.date);
-                    return recordDate >= weekStart && recordDate <= weekEnd;
-                });
-            } else if (summaryType === 'month') {
+                summaryTitle = `${formatDate(weekStart)} - ${formatDate(weekEnd)} 周汇总`;
+                filterRecords = Object.values(history).filter(record => {const d=new Date(record.date);return d>=weekStart&&d<=weekEnd;});
+            } else {
                 const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-                summaryTitle = `${today.getFullYear()}年${today.getMonth() + 1}月 月复盘汇总`;
-
-                filterRecords = Object.values(history).filter(record => {
-                    const recordDate = new Date(record.date);
-                    return recordDate >= monthStart && recordDate <= monthEnd;
-                });
+                const monthEnd = new Date(today.getFullYear(), today.getMonth()+1, 0);
+                summaryTitle = `${today.getFullYear()}年${today.getMonth()+1}月 月汇总`;
+                filterRecords = Object.values(history).filter(record => {const d=new Date(record.date);return d>=monthStart&&d<=monthEnd;});
             }
-
-            if (filterRecords.length === 0) {
-                alert("当前周期内暂无复盘记录！");
-                return;
-            }
-
-            // 生成各板块摘要
+            if (filterRecords.length === 0) {alert("当前周期无记录！");return;}
             const stripTags = (html) => html.replace(/<img[^>]*>/g, '[图片]').replace(/<[^>]*>/g, '');
-            const workSummary = filterRecords.map(r => stripTags(r.work.text)).filter(t => t).join('；');
-            const planSummary = filterRecords.map(r => stripTags(r.plan.text)).filter(t => t).join('；');
-            const reflectionSummary = filterRecords.map(r => stripTags(r.reflection.text)).filter(t => t).join('；');
-            const blessingSummary = filterRecords.map(r => stripTags(r.blessing.text)).filter(t => t).join('；');
-
-            // 渲染汇总内容
-            const summaryContent = document.getElementById('summary-content');
-            summaryContent.innerHTML = `
-                <div class="summary-section">
-                    <h3>本周/月工作内容</h3>
-                    <p>${workSummary || '无记录内容'}</p>
-                </div>
-                <div class="summary-section">
-                    <h3>本周/月计划安排</h3>
-                    <p>${planSummary || '无记录内容'}</p>
-                </div>
-                <div class="summary-section">
-                    <h3>本周/月反思总结</h3>
-                    <p>${reflectionSummary || '无记录内容'}</p>
-                </div>
-                <div class="summary-section">
-                    <h3>本周/月小确幸集锦</h3>
-                    <p>${blessingSummary || '无记录内容'}</p>
-                </div>
-                <div class="summary-section">
-                    <h3>统计信息</h3>
-                    <p>周期内复盘记录条数：${filterRecords.length}条</p>
-                </div>
-            `;
-
+            const workSummary = filterRecords.map(r=>stripTags(r.work.text)).filter(t=>t).join('；');
+            const planSummary = filterRecords.map(r=>stripTags(r.plan.text)).filter(t=>t).join('；');
+            const reflectionSummary = filterRecords.map(r=>stripTags(r.reflection.text)).filter(t=>t).join('；');
+            const blessingSummary = filterRecords.map(r=>stripTags(r.blessing.text)).filter(t=>t).join('；');
             document.getElementById('summary-title').innerText = summaryTitle;
+            document.getElementById('summary-content').innerHTML = `<div class="summary-section"><h3>工作内容</h3><p>${workSummary||'无记录'}</p></div><div class="summary-section"><h3>计划安排</h3><p>${planSummary||'无记录'}</p></div><div class="summary-section"><h3>反思总结</h3><p>${reflectionSummary||'无记录'}</p></div><div class="summary-section"><h3>小确幸集锦</h3><p>${blessingSummary||'无记录'}</p></div><div class="summary-section"><h3>统计</h3><p>周期内复盘${filterRecords.length}条</p></div>`;
             document.getElementById('summary-modal').style.display = 'flex';
         }
 
-        // 日期格式化工具函数
+        // 日期格式化
         function formatDate(date) {
-            const year = date.getFullYear();
-            const month = date.getMonth() + 1;
-            const day = date.getDate();
-            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+            return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
         }
 
+        // 一键导出记录（换浏览器同步用）
+        function exportData() {
+            const data = localStorage.getItem('review-history');
+            if (!data) {alert("暂无复盘记录可导出！");return;}
+            const blob = new Blob([data], {type: 'application/json'});
+            saveAs(blob, `复盘记录_${getToday()}.json`);
+        }
+
+        // 一键导入记录（换浏览器同步用）
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    try {
+                        JSON.parse(reader.result);
+                        localStorage.setItem('review-history', reader.result);
+                        updateHistorySelect();
+                        loadTodayRecord();
+                        alert("导入成功！所有记录已同步");
+                    } catch (err) {
+                        alert("导入失败！文件格式错误");
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // 打开默认显示今日记录
+        function loadTodayRecord() {
+            const today = getToday();
+            const history = JSON.parse(localStorage.getItem('review-history') || '{}');
+            if (history[today]) {
+                document.getElementById('work-today').innerHTML = history[today].work.text;
+                document.getElementById('plan-tomorrow').innerHTML = history[today].plan.text;
+                document.getElementById('reflection-today').innerHTML = history[today].reflection.text;
+                document.getElementById('blessing-today').innerHTML = history[today].blessing.text;
+            } else {
+                document.getElementById('work-today').innerHTML = '';
+                document.getElementById('plan-tomorrow').innerHTML = '';
+                document.getElementById('reflection-today').innerHTML = '';
+                document.getElementById('blessing-today').innerHTML = '';
+                autoSyncPlanToWork();
+            }
+        }
+
+        // 页面加载初始化
         window.onload = function() {
             setHeaderTitle();
             updateHistorySelect();
-            autoSyncPlanToWork();
+            loadTodayRecord();
+            initAutoSave();
             setInterval(checkDateChange, 10000);
         };
     </script>
